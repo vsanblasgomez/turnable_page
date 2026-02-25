@@ -18,6 +18,7 @@ class TurnablePageView extends StatefulWidget {
   final Size bookSize;
   final PaperBoundaryDecoration paperBoundaryDecoration;
   final bool pagesBoundaryIsEnabled;
+  final bool enableZoom;
 
   const TurnablePageView({
     super.key,
@@ -30,17 +31,23 @@ class TurnablePageView extends StatefulWidget {
     required this.settings,
     required this.paperBoundaryDecoration,
     this.pagesBoundaryIsEnabled = true,
+    this.enableZoom = true,
   });
 
   @override
   State<TurnablePageView> createState() => _TurnablePageViewState();
 }
 
-class _TurnablePageViewState extends State<TurnablePageView> {
-  /// PageFlip core logic
+class _TurnablePageViewState extends State<TurnablePageView>
+    with SingleTickerProviderStateMixin {
   late PageFlip _pageFlip;
+  bool _isZooming = false;
+  int _pointerCount = 0;
+  final TransformationController _transformationController =
+      TransformationController();
+  late AnimationController _animationController;
+  Animation<Matrix4>? _animation;
 
-  /// Get the adjusted settings for the PageFlip instance
   FlipSettings get _settings => widget.settings.copyWith(
     width: widget.bookSize.width,
     height: widget.bookSize.height,
@@ -51,12 +58,24 @@ class _TurnablePageViewState extends State<TurnablePageView> {
   void initState() {
     _pageFlip = PageFlip(_settings);
     _setupPageFlipEventsAndController();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
     super.initState();
   }
 
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  int get pointerCount => _pointerCount;
+
   Future<void> _setupPageFlipEventsAndController() async {
     widget.controller?.initializeController(pageFlip: _pageFlip);
-    // Set up event listeners
     _pageFlip.on('flip', (_) {
       if (mounted) {
         final newIndex = _pageFlip.getCurrentPageIndex();
@@ -73,9 +92,40 @@ class _TurnablePageViewState extends State<TurnablePageView> {
     });
   }
 
+  void _onInteractionStart(ScaleStartDetails details) {
+    if (widget.enableZoom) {
+      _isZooming = true;
+    }
+  }
+
+  void _onInteractionEnd(ScaleEndDetails details) {
+    if (widget.enableZoom && _isZooming) {
+      _isZooming = false;
+      _animateResetZoom();
+    }
+  }
+
+  void _animateResetZoom() {
+    final currentScale = _transformationController.value.getMaxScaleOnAxis();
+    if (currentScale > 1.01) {
+      final Matrix4 startMatrix = _transformationController.value.clone();
+      final Matrix4 endMatrix = Matrix4.identity();
+
+      _animation = Matrix4Tween(begin: startMatrix, end: endMatrix).animate(
+        CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+      );
+
+      _animation!.addListener(() {
+        _transformationController.value = _animation!.value;
+      });
+
+      _animationController.forward(from: 0);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return PaperWidget(
+    final bookContent = PaperWidget(
       size: widget.bookSize,
       isSinglePage: widget.settings.usePortrait,
       paperBoundaryDecoration: widget.paperBoundaryDecoration,
@@ -85,6 +135,67 @@ class _TurnablePageViewState extends State<TurnablePageView> {
         builder: (ctx, index) => widget.builder(ctx, index),
         settings: _settings,
         pageFlip: _pageFlip,
+        isZooming: _isZooming || _pointerCount > 1,
+      ),
+    );
+
+    if (!widget.enableZoom) {
+      return bookContent;
+    }
+
+    return Listener(
+      onPointerDown: (event) {
+        setState(() {
+          _pointerCount++;
+          if (_pointerCount > 1) {
+            _isZooming = true;
+          }
+        });
+      },
+      onPointerUp: (event) {
+        setState(() {
+          _pointerCount--;
+          if (_pointerCount <= 1) {
+            _isZooming = false;
+          }
+        });
+        if (_pointerCount <= 1) {
+          _animateResetZoom();
+        }
+      },
+      onPointerCancel: (event) {
+        setState(() {
+          _pointerCount--;
+          if (_pointerCount <= 1) {
+            _isZooming = false;
+          }
+        });
+      },
+      behavior: HitTestBehavior.opaque,
+      child: GestureDetector(
+        onScaleStart: _onInteractionStart,
+        onScaleEnd: _onInteractionEnd,
+        child: InteractiveViewer(
+          transformationController: _transformationController,
+          minScale: 1.0,
+          maxScale: 3.0,
+          panEnabled: false,
+          scaleEnabled: true,
+          onInteractionStart: (details) {
+            if (details.pointerCount > 1) {
+              setState(() {
+                _isZooming = true;
+              });
+            }
+          },
+          onInteractionEnd: (details) {
+            setState(() {
+              _isZooming = false;
+            });
+            _animateResetZoom();
+          },
+          child: bookContent,
+        ),
       ),
     );
   }

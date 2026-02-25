@@ -56,6 +56,8 @@ class RenderTurnableBook extends RenderBox
   SwipeData? _touchPoint;
   double get _swipeDistance => settings.swipeDistance;
 
+  bool isZooming = false;
+
   // Auto gesture detection properties
   bool _isDragging = false;
   model.Point? _initialTouchPoint;
@@ -815,6 +817,14 @@ class RenderTurnableBook extends RenderBox
   }
 
   void _handlePointerDown(Offset position) {
+    if (isZooming) {
+      _isDragging = false;
+      _initialTouchPoint = null;
+      _touchPoint = null;
+      pageFlip.cancelCurrentFlip();
+      return;
+    }
+
     final point = model.Point(position.dx, position.dy);
 
     // Reset only dragging state, keep _childConsumedHit as set by hitTestChildren
@@ -836,6 +846,11 @@ class RenderTurnableBook extends RenderBox
   }
 
   void _handlePointerMove(Offset position) {
+    if (isZooming) {
+      pageFlip.cancelCurrentFlip();
+      return;
+    }
+
     final point = model.Point(position.dx, position.dy);
 
     if (_initialTouchPoint != null) {
@@ -876,6 +891,12 @@ class RenderTurnableBook extends RenderBox
   }
 
   void _handlePointerUp(Offset position) {
+    if (isZooming) {
+      pageFlip.cancelCurrentFlip();
+      _resetGestureState();
+      return;
+    }
+
     final point = model.Point(position.dx, position.dy);
 
     // If child consumed the hit and user didn't drag, let the child handle it

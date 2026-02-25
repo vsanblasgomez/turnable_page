@@ -10,6 +10,7 @@ class TurnableBookRenderObjectWidget extends MultiChildRenderObjectWidget {
   final PageWidgetBuilder builder;
   final FlipSettings settings;
   final PageFlip pageFlip;
+  final bool isZooming;
 
   TurnableBookRenderObjectWidget({
     super.key,
@@ -17,19 +18,21 @@ class TurnableBookRenderObjectWidget extends MultiChildRenderObjectWidget {
     required this.builder,
     required this.settings,
     required this.pageFlip,
+    this.isZooming = false,
   }) : super(
-         children: List.generate(
-           pageCount,
-           (i) => PageHost(
-             index: i,
-             child: builder(WidgetsBinding.instance.rootElement!, i),
-           ),
-         ),
-       );
+        children: List.generate(
+          pageCount,
+          (i) => PageHost(
+            index: i,
+            child: builder(WidgetsBinding.instance.rootElement!, i),
+          ),
+        ),
+      );
 
   @override
   RenderTurnableBook createRenderObject(BuildContext context) {
     final render = RenderTurnableBook(settings, pageFlip);
+    render.isZooming = isZooming;
     return render;
   }
 
@@ -39,5 +42,6 @@ class TurnableBookRenderObjectWidget extends MultiChildRenderObjectWidget {
     RenderTurnableBook renderObject,
   ) {
     renderObject.updateSettings(settings);
+    renderObject.isZooming = isZooming;
   }
 }

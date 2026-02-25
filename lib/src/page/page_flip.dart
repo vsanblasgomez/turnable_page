@@ -267,6 +267,14 @@ class PageFlip extends EventObject {
     final dx = b.p.x - a.p.x;
     return dx / dt;
   }
+
+  void cancelCurrentFlip() {
+    isUserTouch = false;
+    isUserMove = false;
+    _samples.clear();
+    flipProcess.reset();
+    _render?.clearShadow();
+  }
 }
 
 class _MotionSample {
