@@ -274,6 +274,8 @@ class PageFlip extends EventObject {
     _samples.clear();
     flipProcess.reset();
     _render?.clearShadow();
+    _render?.setFlippingPage(null);
+    _render?.setBottomPage(null);
   }
 }
 

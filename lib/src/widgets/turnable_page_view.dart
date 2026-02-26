@@ -153,6 +153,7 @@ class _TurnablePageViewState extends State<TurnablePageView>
         });
       },
       onPointerUp: (event) {
+        final wasZooming = _pointerCount > 1;
         setState(() {
           _pointerCount--;
           if (_pointerCount <= 1) {
@@ -162,14 +163,21 @@ class _TurnablePageViewState extends State<TurnablePageView>
         if (_pointerCount <= 1) {
           _animateResetZoom();
         }
+        if (wasZooming) {
+          _pageFlip.cancelCurrentFlip();
+        }
       },
       onPointerCancel: (event) {
+        final wasZooming = _pointerCount > 1;
         setState(() {
           _pointerCount--;
           if (_pointerCount <= 1) {
             _isZooming = false;
           }
         });
+        if (wasZooming) {
+          _pageFlip.cancelCurrentFlip();
+        }
       },
       behavior: HitTestBehavior.opaque,
       child: GestureDetector(
