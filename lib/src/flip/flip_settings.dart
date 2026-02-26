@@ -71,6 +71,12 @@ class FlipSettings {
   /// Bend strength multiplier (0-1) influencing hardAngle easing
   final double bendStrength;
 
+  /// Center spine shadow opacity (0.0 to 1.0)
+  final double centerShadowOpacity;
+
+  /// Center spine shadow size as fraction of page width (0.0 to 1.0)
+  final double centerShadowSize;
+
   FlipSettings({
     /// Initial page to display (0-based). Default: 0 (first page)
     this.startPageIndex = 0,
@@ -123,6 +129,8 @@ class FlipSettings {
     this.bendStrength = 0.6,
     this.onlyVerticalPageFlip = false,
     this.hideLeftShadow = false,
+    this.centerShadowOpacity = 0.5,
+    this.centerShadowSize = 0.05,
   });
 
   FlipSettings copyWith({
@@ -150,6 +158,8 @@ class FlipSettings {
     double? bendStrength,
     bool? onlyVerticalPageFlip,
     bool? hideLeftShadow,
+    double? centerShadowOpacity,
+    double? centerShadowSize,
   }) {
     return FlipSettings(
       startPageIndex: startPage ?? startPageIndex,
@@ -177,6 +187,8 @@ class FlipSettings {
       bendStrength: bendStrength ?? this.bendStrength,
       hideLeftShadow: hideLeftShadow ?? this.hideLeftShadow,
       onlyVerticalPageFlip: onlyVerticalPageFlip ?? this.onlyVerticalPageFlip,
+      centerShadowOpacity: centerShadowOpacity ?? this.centerShadowOpacity,
+      centerShadowSize: centerShadowSize ?? this.centerShadowSize,
     );
   }
 }

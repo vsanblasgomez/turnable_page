@@ -611,7 +611,8 @@ class RenderTurnableBook extends RenderBox
 
   void _drawBookShadow(Canvas canvas, PageRect rect, Offset root) {
     if (!settings.drawShadow) return;
-    final shadowSize = rect.width / 20;
+    final shadowSize = rect.width * settings.centerShadowSize;
+    final shadowOpacity = settings.centerShadowOpacity;
     canvas.save();
     canvas.clipRect(
       Rect.fromLTWH(
@@ -629,10 +630,10 @@ class RenderTurnableBook extends RenderBox
       Offset(shadowSize, 0),
       [
         const ui.Color.fromARGB(0, 0, 0, 0),
-        ui.Color.fromARGB((0.2 * 255).round(), 0, 0, 0),
-        ui.Color.fromARGB((0.1 * 255).round(), 0, 0, 0),
-        ui.Color.fromARGB((0.5 * 255).round(), 0, 0, 0),
-        ui.Color.fromARGB((0.4 * 255).round(), 0, 0, 0),
+        ui.Color.fromARGB((shadowOpacity * 0.4 * 255).round(), 0, 0, 0),
+        ui.Color.fromARGB((shadowOpacity * 0.2 * 255).round(), 0, 0, 0),
+        ui.Color.fromARGB((shadowOpacity * 255).round(), 0, 0, 0),
+        ui.Color.fromARGB((shadowOpacity * 0.8 * 255).round(), 0, 0, 0),
         const ui.Color.fromARGB(0, 0, 0, 0),
       ],
       [0.0, 0.4, 0.49, 0.5, 0.51, 1.0],
