@@ -153,6 +153,7 @@ class _TurnablePageViewState extends State<TurnablePageView>
         });
       },
       onPointerUp: (event) {
+        if (_pointerCount <= 0) return;
         final wasZooming = _pointerCount > 1;
         setState(() {
           _pointerCount--;
@@ -168,6 +169,7 @@ class _TurnablePageViewState extends State<TurnablePageView>
         }
       },
       onPointerCancel: (event) {
+        if (_pointerCount <= 0) return;
         final wasZooming = _pointerCount > 1;
         setState(() {
           _pointerCount--;
