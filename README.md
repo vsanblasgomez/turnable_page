@@ -51,7 +51,7 @@ A Flutter package that provides a realistic page-flipping effect for digital boo
 Add this to your package's `pubspec.yaml` file:
 
 ```yaml
-dependencies:
+turnable_page:
   git:
     url: https://github.com/vsanblasgomez/turnable_page.git
     ref: v1.0.0
