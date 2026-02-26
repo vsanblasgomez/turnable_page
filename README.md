@@ -2,19 +2,23 @@
 
 A Flutter package that provides a realistic page-flipping effect for digital books, magazines, catalogs, and other multi-page content in Flutter applications.
 
-## Migration Guide (v0.x → v1.0.0)
+## v1.0.0
 
 
 ### ✨ What's New
 
-- **Interactive content now works** - buttons, inputs, and other widgets inside pages are fully functional
-- **Smart gesture detection** - automatic differentiation between widget interaction and page flipping
-- **Better performance** - migrated from CustomPainter to Flutter's native RenderBox system
+* ✅ **Interactive Content**: Buttons, inputs, and other widgets inside pages are now fully functional and respond to user interactions.
+* 🌟 **Smart Gesture Detection**: Automatically distinguishes between widget interaction and page-flip gestures, preventing accidental flips.
+* ⚡ **Improved Performance**: Migrated from `CustomPainter` to Flutter's native `RenderBox` system for smoother animations and faster rendering.
+* 🔍 **Zoom Support**: Smooth zoom in/out functionality for improved readability and content inspection. Any ongoing page-flip animation is automatically **canceled** when zoom is activated to prevent state conflicts and visual glitches.
+* 🌗 **Customizable Center Shadow**: Adjustable gutter shadow between pages, allowing precise control over depth intensity and enhancing the realistic book effect.
+* 📖 **Pages-Only Mode**: When `PaperBoundaryDecoration` is set to `none`, the outer book structure (cover and boundary decoration) is removed, rendering only the inner pages for a cleaner and more minimal layout.
 
 
 ## Features
 
-✅ **Realistic Physics**: Advanced flip animations with proper physics and shadows  
+✅ **Realistic Physics**: Advanced flip animations with proper physics and shadows
+✅ **Zoom Support**: Smooth zoom in/out functionality for improved readability and content inspection. Automatically cancels any ongoing page-flip animation when activated to prevent state conflicts and visual glitches.
 ✅ **Interactive Content**: Full support for interactive widgets (buttons, inputs, etc.) within pages  
 ✅ **Smart Gestures**: Automatic differentiation between drag (page flip) and tap (widget interaction)  
 ✅ **Touch Support**: Full touch and gesture support for mobile devices  
@@ -48,7 +52,9 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  turnable_page: ^1.0.0
+  git:
+    url: https://github.com/vsanblasgomez/turnable_page.git
+    ref: v1.0.0
 ```
 
 Then run:
@@ -183,6 +189,8 @@ Configuration object for customizing flip behavior and appearance.
 | `mobileScrollSupport` | `bool`     | `true`           | Enable touch scrolling on mobile devices                   |
 | `swipeDistance`       | `double`   | `100.0`          | Minimum distance in pixels for swipe gesture               |
 | `showPageCorners`     | `bool`     | `true`           | Show interactive corner highlighting on hover              |
+| `centerShadowOpacity` | `double`   | `0.5`            | Show the opacity of inner book shadow                      |
+| `centerShadowSize`    | `double`   | `0.05`           | Size of inner book shadow                                  |
 
 #### PageViewMode
 
