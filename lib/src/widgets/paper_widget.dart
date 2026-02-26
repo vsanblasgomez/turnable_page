@@ -28,8 +28,17 @@ class PaperWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isNone =
+        paperBoundaryDecoration.outerAlpha == 0.0 &&
+        paperBoundaryDecoration.middleAlpha == 0.0 &&
+        paperBoundaryDecoration.innerAlpha == 0.0;
+
     if (!isEnabled) {
-      return child;
+      if (isNone) {
+        return SizedBox(width: size.width, height: size.height, child: child);
+      } else{
+        return child;
+      }
     }
 
     final effectivePadding = EdgeInsetsDirectional.only(
@@ -40,6 +49,10 @@ class PaperWidget extends StatelessWidget {
       top: padding.resolve(Directionality.of(context)).top,
       bottom: padding.resolve(Directionality.of(context)).bottom,
     );
+
+    if (isNone) {
+      return SizedBox(width: size.width, height: size.height, child: child);
+    }
 
     return Container(
       width: size.width + effectivePadding.horizontal * 3,

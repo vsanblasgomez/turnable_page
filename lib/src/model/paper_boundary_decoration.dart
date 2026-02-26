@@ -116,4 +116,33 @@ class PaperBoundaryDecoration {
     middleAlpha: 0.5,
     innerAlpha: 0.3,
   );
+
+  /// No decoration - clean pages without borders or shadows
+  static const PaperBoundaryDecoration none = PaperBoundaryDecoration(
+    baseColor: Colors.white,
+    shadowColor: Colors.transparent,
+    borderColor: Colors.transparent,
+    innerBorderColor: Colors.transparent,
+    glowColor: Colors.transparent,
+    gradientStartColor: Colors.white,
+    gradientMiddleColor: Colors.white,
+    gradientEndColor: Colors.white,
+    finalBorderColor: Colors.transparent,
+    finalShadowColor: Colors.transparent,
+    outerAlpha: 0.0,
+    middleAlpha: 0.0,
+    innerAlpha: 0.0,
+    gradientStartAlpha: 0.0,
+    gradientMiddleAlpha: 0.0,
+    gradientEndAlpha: 0.0,
+    outerBorderWidth: 0.0,
+    middleBorderWidth: 0.0,
+    innerBorderWidth: 0.0,
+    finalBorderWidth: 0.0,
+    shadowBlurRadius: 0.0,
+    glowBlurRadius: 0.0,
+    glowSpreadRadius: 0.0,
+    finalShadowBlurRadius: 0.0,
+    finalShadowSpreadRadius: 0.0,
+  );
 }
