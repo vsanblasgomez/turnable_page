@@ -9,14 +9,17 @@ typedef PageImageProviderBuilder = ImageProvider? Function(int pageIndex);
 /// Manages Flutter's [ImageCache] so that only a bounded number of decoded
 /// page images are kept in memory at any time.
 ///
-/// ### Usage
+/// Supports an optional **high-resolution** provider per page.  When the user
+/// stops zooming, high-res entries that are no longer needed are evicted
+/// automatically.
 ///
-/// Create an instance and pass it to [TurnablePage] (or [TurnablePageView]):
+/// ### Usage
 ///
 /// ```dart
 /// final cacheManager = PageCacheManager(
 ///   maxCachedPages: 8,
-///   imageProviderForPage: (index) => AssetImage('assets/page_$index.webp'),
+///   imageProviderForPage: (i) => AssetImage('assets/low/page_$i.webp'),
+///   highResProviderForPage: (i) => AssetImage('assets/high/page_$i.webp'),
 /// );
 /// ```
 ///
@@ -31,18 +34,33 @@ class PageCacheManager {
   /// are evicted.
   final int maxCachedPages;
 
-  /// Optional builder that maps a page index to its [ImageProvider].
+  /// Builder that maps a page index to its **low-resolution** [ImageProvider].
   ///
   /// When **null**, no explicit eviction is performed and memory is controlled
   /// only by the windowed rendering (fewer widgets → fewer live images).
   final PageImageProviderBuilder? imageProviderForPage;
 
-  /// Pages currently tracked as cached.
+  /// Builder that maps a page index to its **high-resolution** [ImageProvider].
+  ///
+  /// When **null**, only the low-res provider is tracked for eviction.
+  final PageImageProviderBuilder? highResProviderForPage;
+
+  /// Pages whose low-res images are currently tracked as cached.
   final Set<int> _trackedPages = {};
+
+  /// Pages whose high-res images are currently tracked as cached.
+  final Set<int> _trackedHighRes = {};
+
+  /// The last known current page (used by [onZoomEnd]).
+  int _lastCurrentPage = 0;
+
+  /// The last known total page count.
+  int _lastTotalPages = 0;
 
   PageCacheManager({
     this.maxCachedPages = 8,
     this.imageProviderForPage,
+    this.highResProviderForPage,
   });
 
   /// Called when the current visible page changes.
@@ -50,6 +68,9 @@ class PageCacheManager {
   /// [currentPageIndex] – 0-based index of the current (left) page.
   /// [totalPages]       – total number of pages in the book.
   void onPageChanged(int currentPageIndex, int totalPages) {
+    _lastCurrentPage = currentPageIndex;
+    _lastTotalPages = totalPages;
+
     if (imageProviderForPage == null) return;
 
     final half = maxCachedPages ~/ 2;
@@ -62,24 +83,64 @@ class PageCacheManager {
       keepSet.add(i);
     }
 
-    // Evict pages that left the window.
+    // Evict low-res pages that left the window.
     final toEvict = _trackedPages.difference(keepSet);
     for (final pageIndex in toEvict) {
-      final provider = imageProviderForPage!(pageIndex);
-      provider?.evict();
+      imageProviderForPage!(pageIndex)?.evict();
     }
-
     _trackedPages
       ..removeAll(toEvict)
       ..addAll(keepSet);
+
+    // Also evict high-res images that are outside the window.
+    if (highResProviderForPage != null) {
+      final highResToEvict = _trackedHighRes.difference(keepSet);
+      for (final pageIndex in highResToEvict) {
+        highResProviderForPage!(pageIndex)?.evict();
+      }
+      _trackedHighRes.removeAll(highResToEvict);
+    }
   }
 
-  /// Evict all tracked pages from the cache.
+  /// Called when the user **starts** zooming.
+  ///
+  /// Marks the currently visible pages as having high-res images loaded so
+  /// they can be evicted later.  This is a no-op if [highResProviderForPage]
+  /// is null.
+  void onZoomStart() {
+    if (highResProviderForPage == null) return;
+    // The visible spread is current + current+1 (double mode).
+    _trackedHighRes.add(_lastCurrentPage);
+    if (_lastCurrentPage + 1 < _lastTotalPages) {
+      _trackedHighRes.add(_lastCurrentPage + 1);
+    }
+  }
+
+  /// Called when the user **stops** zooming.
+  ///
+  /// Evicts high-res images for every tracked page, since only the low-res
+  /// versions are needed at 1× scale.
+  void onZoomEnd() {
+    if (highResProviderForPage == null) return;
+    for (final pageIndex in _trackedHighRes) {
+      highResProviderForPage!(pageIndex)?.evict();
+    }
+    _trackedHighRes.clear();
+  }
+
+  /// Evict all tracked pages (both resolutions) from the cache.
   void dispose() {
-    if (imageProviderForPage == null) return;
-    for (final pageIndex in _trackedPages) {
-      imageProviderForPage!(pageIndex)?.evict();
+    if (imageProviderForPage != null) {
+      for (final pageIndex in _trackedPages) {
+        imageProviderForPage!(pageIndex)?.evict();
+      }
+    }
+    if (highResProviderForPage != null) {
+      for (final pageIndex in _trackedHighRes) {
+        highResProviderForPage!(pageIndex)?.evict();
+      }
     }
     _trackedPages.clear();
+    _trackedHighRes.clear();
   }
 }

@@ -10,6 +10,7 @@ import 'turnable_page_view.dart';
 class TurnablePage extends StatelessWidget {
   final PageFlipController? controller;
   final TurnableBuilder builder;
+  final ValueNotifier<bool>? zoomNotifier;
   final int pageCount;
   final TurnablePageCallback? onPageChanged;
   final FlipSettings settings;
@@ -25,6 +26,7 @@ class TurnablePage extends StatelessWidget {
     this.controller,
     this.aspectRatio,
     required this.builder,
+    this.zoomNotifier,
     required this.pageCount,
     this.onPageChanged,
     this.pageViewMode = PageViewMode.single,
@@ -97,6 +99,7 @@ class TurnablePage extends StatelessWidget {
 
         return TurnablePageView(
           builder: (context, index) => builder(context, index, constraints),
+          zoomNotifier: zoomNotifier,
           bookSize: bookSize,
           settings: adjustedSettings,
           pageCount: pageCount,

@@ -6,12 +6,14 @@ import 'package:flutter/scheduler.dart';
 import '../../turnable_page.dart';
 import '../page/page_flip.dart';
 import '../page/page_host.dart';
+import '../render/render_turnable_book.dart';
 import 'paper_widget.dart';
 import 'turnable_book_render_object_widget.dart';
 
 class TurnablePageView extends StatefulWidget {
   final PageFlipController? controller;
   final PageWidgetBuilder builder;
+  final ValueNotifier<bool>? zoomNotifier;
   final int pageCount;
   final TurnablePageCallback? onPageChanged;
   final FlipSettings settings;
@@ -27,6 +29,7 @@ class TurnablePageView extends StatefulWidget {
     this.controller,
     this.onPageChanged,
     required this.builder,
+    this.zoomNotifier,
     required this.pageCount,
     required this.aspectRatio,
     required this.bookSize,
@@ -70,6 +73,7 @@ class _TurnablePageViewState extends State<TurnablePageView>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+    widget.zoomNotifier?.value = false;
     super.initState();
   }
 
@@ -82,6 +86,24 @@ class _TurnablePageViewState extends State<TurnablePageView>
   }
 
   int get pointerCount => _pointerCount;
+
+  void _setZoomState(bool value) {
+    if (_isZooming == value) return;
+    _isZooming = value;
+    if (widget.zoomNotifier != null && widget.zoomNotifier!.value != value) {
+      widget.zoomNotifier!.value = value;
+    }
+    final render = _pageFlip.getRender();
+    if (render is RenderTurnableBook) {
+      render.isZooming = _isZooming || _pointerCount > 1;
+    }
+    // Notify the cache manager so high-res images are tracked / evicted.
+    if (value) {
+      widget.cacheManager?.onZoomStart();
+    } else {
+      widget.cacheManager?.onZoomEnd();
+    }
+  }
 
   // ---------------------------------------------------------------
   //  Windowed rendering helpers
@@ -158,19 +180,6 @@ class _TurnablePageViewState extends State<TurnablePageView>
     });
   }
 
-  void _onInteractionStart(ScaleStartDetails details) {
-    if (widget.enableZoom) {
-      _isZooming = true;
-    }
-  }
-
-  void _onInteractionEnd(ScaleEndDetails details) {
-    if (widget.enableZoom && _isZooming) {
-      _isZooming = false;
-      _animateResetZoom();
-    }
-  }
-
   void _animateResetZoom() {
     final currentScale = _transformationController.value.getMaxScaleOnAxis();
     if (currentScale > 1.01) {
@@ -200,10 +209,10 @@ class _TurnablePageViewState extends State<TurnablePageView>
       isEnabled: widget.pagesBoundaryIsEnabled,
       child: TurnableBookRenderObjectWidget(
         totalPageCount: widget.pageCount,
-        children: windowedChildren,
         settings: _settings,
         pageFlip: _pageFlip,
         isZooming: _isZooming || _pointerCount > 1,
+        children: windowedChildren,
       ),
     );
 
@@ -211,69 +220,57 @@ class _TurnablePageViewState extends State<TurnablePageView>
       return bookContent;
     }
 
+    // Pointer counting via Listener — lightweight, no gesture arena.
+    // Actual zoom detection via InteractiveViewer callbacks only.
     return Listener(
-      onPointerDown: (event) {
-        setState(() {
-          _pointerCount++;
-          if (_pointerCount > 1) {
-            _isZooming = true;
-          }
-        });
+      onPointerDown: (_) {
+        _pointerCount++;
+        if (_pointerCount > 1) {
+          _setZoomState(true);
+        }
       },
-      onPointerUp: (event) {
+      onPointerUp: (_) {
         if (_pointerCount <= 0) return;
-        final wasZooming = _pointerCount > 1;
-        setState(() {
-          _pointerCount--;
-          if (_pointerCount <= 1) {
-            _isZooming = false;
-          }
-        });
+        final wasMultiTouch = _pointerCount > 1;
+        _pointerCount--;
         if (_pointerCount <= 1) {
+          _setZoomState(false);
           _animateResetZoom();
         }
-        if (wasZooming) {
+        if (wasMultiTouch) {
           _pageFlip.cancelCurrentFlip();
         }
       },
-      onPointerCancel: (event) {
+      onPointerCancel: (_) {
         if (_pointerCount <= 0) return;
-        final wasZooming = _pointerCount > 1;
-        setState(() {
-          _pointerCount--;
-          if (_pointerCount <= 1) {
-            _isZooming = false;
-          }
-        });
-        if (wasZooming) {
+        final wasMultiTouch = _pointerCount > 1;
+        _pointerCount--;
+        if (_pointerCount <= 1) {
+          _setZoomState(false);
+        }
+        if (wasMultiTouch) {
           _pageFlip.cancelCurrentFlip();
         }
       },
       behavior: HitTestBehavior.opaque,
-      child: GestureDetector(
-        onScaleStart: _onInteractionStart,
-        onScaleEnd: _onInteractionEnd,
-        child: InteractiveViewer(
-          transformationController: _transformationController,
-          minScale: 1.0,
-          maxScale: 3.0,
-          panEnabled: false,
-          scaleEnabled: true,
-          onInteractionStart: (details) {
-            if (details.pointerCount > 1) {
-              setState(() {
-                _isZooming = true;
-              });
-            }
-          },
-          onInteractionEnd: (details) {
-            setState(() {
-              _isZooming = false;
-            });
+      child: InteractiveViewer(
+        transformationController: _transformationController,
+        minScale: 1.0,
+        maxScale: 3.0,
+        panEnabled: false,
+        scaleEnabled: true,
+        onInteractionStart: (details) {
+          if (details.pointerCount > 1) {
+            _setZoomState(true);
+          }
+        },
+        onInteractionEnd: (_) {
+          if (_pointerCount <= 1) {
+            _setZoomState(false);
             _animateResetZoom();
-          },
-          child: bookContent,
-        ),
+          }
+        },
+        child: bookContent,
       ),
     );
   }
