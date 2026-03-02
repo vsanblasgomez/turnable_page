@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 
 import '../../turnable_page.dart';
 import '../page/page_flip.dart';
+import '../page/page_host.dart';
 import 'paper_widget.dart';
 import 'turnable_book_render_object_widget.dart';
 
@@ -19,6 +20,7 @@ class TurnablePageView extends StatefulWidget {
   final PaperBoundaryDecoration paperBoundaryDecoration;
   final bool pagesBoundaryIsEnabled;
   final bool enableZoom;
+  final PageCacheManager? cacheManager;
 
   const TurnablePageView({
     super.key,
@@ -32,6 +34,7 @@ class TurnablePageView extends StatefulWidget {
     required this.paperBoundaryDecoration,
     this.pagesBoundaryIsEnabled = true,
     this.enableZoom = true,
+    this.cacheManager,
   });
 
   @override
@@ -48,6 +51,10 @@ class _TurnablePageViewState extends State<TurnablePageView>
   late AnimationController _animationController;
   Animation<Matrix4>? _animation;
 
+  /// Index of the currently visible (left) page, used to compute the
+  /// rendering window.
+  late int _currentPageIndex;
+
   FlipSettings get _settings => widget.settings.copyWith(
     width: widget.bookSize.width,
     height: widget.bookSize.height,
@@ -56,6 +63,7 @@ class _TurnablePageViewState extends State<TurnablePageView>
 
   @override
   void initState() {
+    _currentPageIndex = widget.settings.startPageIndex;
     _pageFlip = PageFlip(_settings);
     _setupPageFlipEventsAndController();
     _animationController = AnimationController(
@@ -69,10 +77,58 @@ class _TurnablePageViewState extends State<TurnablePageView>
   void dispose() {
     _transformationController.dispose();
     _animationController.dispose();
+    widget.cacheManager?.dispose();
     super.dispose();
   }
 
   int get pointerCount => _pointerCount;
+
+  // ---------------------------------------------------------------
+  //  Windowed rendering helpers
+  // ---------------------------------------------------------------
+
+  /// Compute page indices that must be in the widget tree.
+  Set<int> _computeActiveIndices() {
+    final isPortrait = _settings.usePortrait;
+    final total = widget.pageCount;
+    final current = _currentPageIndex.clamp(0, total - 1);
+    final indices = <int>{};
+
+    if (isPortrait) {
+      // Single mode: current page ± 1 = max 3 pages.
+      if (current > 0) indices.add(current - 1);
+      indices.add(current);
+      if (current < total - 1) indices.add(current + 1);
+    } else {
+      // Double mode: current spread + 1 prev spread + 1 next spread.
+      // A generous window of current-3 .. current+4 covers any spread
+      // arrangement (including covers).
+      final start = (current - 3).clamp(0, total - 1);
+      final end = (current + 4).clamp(0, total - 1);
+      for (int i = start; i <= end; i++) {
+        indices.add(i);
+      }
+    }
+    return indices;
+  }
+
+  /// Build [PageHost] widgets for the current window.
+  ///
+  /// Each widget carries a [ValueKey] so that Flutter matches elements
+  /// correctly across rebuilds — unchanged pages are **not** rebuilt.
+  List<Widget> _buildWindowedChildren(BuildContext context) {
+    final indices = _computeActiveIndices();
+    final sorted = indices.toList()..sort();
+    return sorted
+        .map(
+          (i) => PageHost(
+            key: ValueKey<int>(i),
+            index: i,
+            child: widget.builder(context, i),
+          ),
+        )
+        .toList();
+  }
 
   Future<void> _setupPageFlipEventsAndController() async {
     widget.controller?.initializeController(pageFlip: _pageFlip);
@@ -83,6 +139,16 @@ class _TurnablePageViewState extends State<TurnablePageView>
         final right = (newIndex + 1 < widget.pageCount) ? newIndex + 1 : -1;
         widget.settings.startPageIndex = left;
         _pageFlip.updateSetting(_settings);
+
+        // Shift the rendering window when the page changes.
+        if (_currentPageIndex != left) {
+          setState(() {
+            _currentPageIndex = left;
+          });
+          // Evict images outside the cache window.
+          widget.cacheManager?.onPageChanged(left, widget.pageCount);
+        }
+
         SchedulerBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             widget.onPageChanged?.call(left, right);
@@ -125,14 +191,16 @@ class _TurnablePageViewState extends State<TurnablePageView>
 
   @override
   Widget build(BuildContext context) {
+    final windowedChildren = _buildWindowedChildren(context);
+
     final bookContent = PaperWidget(
       size: widget.bookSize,
       isSinglePage: widget.settings.usePortrait,
       paperBoundaryDecoration: widget.paperBoundaryDecoration,
       isEnabled: widget.pagesBoundaryIsEnabled,
       child: TurnableBookRenderObjectWidget(
-        pageCount: widget.pageCount,
-        builder: (ctx, index) => widget.builder(ctx, index),
+        totalPageCount: widget.pageCount,
+        children: windowedChildren,
         settings: _settings,
         pageFlip: _pageFlip,
         isZooming: _isZooming || _pointerCount > 1,

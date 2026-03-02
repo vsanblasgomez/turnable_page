@@ -29,9 +29,14 @@ class RenderTurnableBook extends RenderBox
     implements RenderPage {
   static const int _swipeTimeout = 250;
   static const double _minMoveThreshold = 10.0;
+
+  /// Total number of pages in the book (may be larger than [childCount]
+  /// when windowed rendering is active).
+  int totalPageCount;
+
   bool get _needsWhitePage {
     if (settings.usePortrait) return false;
-    return settings.showCover ? false : childCount % 2 == 1;
+    return settings.showCover ? false : totalPageCount % 2 == 1;
   }
 
   FlipSettings settings;
@@ -62,7 +67,7 @@ class RenderTurnableBook extends RenderBox
   bool _isDragging = false;
   model.Point? _initialTouchPoint;
 
-  RenderTurnableBook(this.settings, this.pageFlip) {
+  RenderTurnableBook(this.settings, this.pageFlip, this.totalPageCount) {
     pageFlip.render = this;
     collection = PageCollectionImpl(pageFlip, this, 0);
   }
@@ -143,7 +148,7 @@ class RenderTurnableBook extends RenderBox
       _assignPageIndices();
     }
     if (!_initialized) {
-      final totalPages = _needsWhitePage ? childCount + 1 : childCount;
+      final totalPages = _needsWhitePage ? totalPageCount + 1 : totalPageCount;
       collection = PageCollectionImpl(pageFlip, this, totalPages);
       collection.loadBookPages();
       collection.show(settings.startPageIndex);
@@ -161,31 +166,31 @@ class RenderTurnableBook extends RenderBox
 
   void _assignPageIndices() {
     _needsIndexRebuild = false;
-    final count = childCount;
-    final totalSlots = _needsWhitePage ? count + 1 : count;
+    final totalSlots = _needsWhitePage ? totalPageCount + 1 : totalPageCount;
     if (_indexedChildren.length != totalSlots) {
       _indexedChildren = List<RenderBox?>.filled(
         totalSlots,
         null,
         growable: false,
       );
+    } else {
+      // Clear so that removed children don't linger.
+      _indexedChildren.fillRange(0, _indexedChildren.length, null);
     }
-    int index = 0;
+    // Read page indices from parent data (set by _PageRender via PageHost).
     RenderBox? child = firstChild;
-    while (child != null && index < count) {
+    while (child != null) {
       final pd = child.parentData as TurnableParentData;
-      pd.pageIndex = index;
-      _indexedChildren[index] = child;
-      index++;
+      final pageIdx = pd.pageIndex;
+      if (pageIdx >= 0 && pageIdx < totalSlots) {
+        _indexedChildren[pageIdx] = child;
+      }
       child = pd.nextSibling;
-    }
-    if (_needsWhitePage) {
-      _indexedChildren[count] = null;
     }
   }
 
   RenderBox? _childByIndex(int index) {
-    if (_needsWhitePage && index == childCount) {
+    if (_needsWhitePage && index == totalPageCount) {
       return null;
     }
     if (!_needsIndexRebuild && index >= 0 && index < _indexedChildren.length) {
@@ -958,7 +963,7 @@ class RenderTurnableBook extends RenderBox
   void ensureAnimating() => _scheduleFrame();
 
   bool _isWhitePageIndex(int index) {
-    return _needsWhitePage && index == childCount;
+    return _needsWhitePage && index == totalPageCount;
   }
 
   void _drawWhitePageStatic(

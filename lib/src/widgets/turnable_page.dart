@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../enums/page_view_mode.dart';
 import '../flip/flip_settings.dart';
 import '../model/paper_boundary_decoration.dart';
+import '../utils/page_cache_manager.dart';
 import 'page_flip_controller.dart';
 import 'turnable_page_view.dart';
 
@@ -17,6 +18,7 @@ class TurnablePage extends StatelessWidget {
   final PaperBoundaryDecoration paperBoundaryDecoration;
   final double? aspectRatio;
   final bool pagesBoundaryIsEnabled;
+  final PageCacheManager? cacheManager;
 
   TurnablePage({
     super.key,
@@ -30,6 +32,7 @@ class TurnablePage extends StatelessWidget {
     this.paperBoundaryDecoration = PaperBoundaryDecoration.vintage,
     FlipSettings? settings,
     this.pagesBoundaryIsEnabled = true,
+    this.cacheManager,
   }) : settings = settings ?? FlipSettings() {
     if (settings != null) {
       assert(
@@ -102,6 +105,7 @@ class TurnablePage extends StatelessWidget {
           onPageChanged: onPageChanged,
           pagesBoundaryIsEnabled: pagesBoundaryIsEnabled,
           paperBoundaryDecoration: paperBoundaryDecoration,
+          cacheManager: cacheManager,
         );
       },
     );

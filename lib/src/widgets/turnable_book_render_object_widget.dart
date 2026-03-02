@@ -2,36 +2,32 @@ import 'package:flutter/widgets.dart';
 
 import '../../turnable_page.dart';
 import '../page/page_flip.dart';
-import '../page/page_host.dart';
 import '../render/render_turnable_book.dart';
 
+/// Render-object widget that holds only the *windowed* subset of pages.
+///
+/// [children] must already be wrapped in `PageHost` widgets carrying the
+/// correct page indices.  The [totalPageCount] tells the render object
+/// how many pages exist in the entire book (needed for white-page logic
+/// and collection initialisation).
 class TurnableBookRenderObjectWidget extends MultiChildRenderObjectWidget {
-  final int pageCount;
-  final PageWidgetBuilder builder;
+  final int totalPageCount;
   final FlipSettings settings;
   final PageFlip pageFlip;
   final bool isZooming;
 
-  TurnableBookRenderObjectWidget({
+  const TurnableBookRenderObjectWidget({
     super.key,
-    required this.pageCount,
-    required this.builder,
+    required this.totalPageCount,
+    required super.children,
     required this.settings,
     required this.pageFlip,
     this.isZooming = false,
-  }) : super(
-        children: List.generate(
-          pageCount,
-          (i) => PageHost(
-            index: i,
-            child: builder(WidgetsBinding.instance.rootElement!, i),
-          ),
-        ),
-      );
+  });
 
   @override
   RenderTurnableBook createRenderObject(BuildContext context) {
-    final render = RenderTurnableBook(settings, pageFlip);
+    final render = RenderTurnableBook(settings, pageFlip, totalPageCount);
     render.isZooming = isZooming;
     return render;
   }
@@ -41,6 +37,7 @@ class TurnableBookRenderObjectWidget extends MultiChildRenderObjectWidget {
     BuildContext context,
     RenderTurnableBook renderObject,
   ) {
+    renderObject.totalPageCount = totalPageCount;
     renderObject.updateSettings(settings);
     renderObject.isZooming = isZooming;
   }

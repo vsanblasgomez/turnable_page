@@ -22,13 +22,33 @@ class PageHost extends SingleChildRenderObjectWidget {
 }
 
 class _PageRender extends RenderProxyBox {
-  _PageRender(this.index);
+  _PageRender(int index) : _index = index;
 
-  int index;
+  int _index;
+  int get index => _index;
+  set index(int value) {
+    if (_index != value) {
+      _index = value;
+      _syncPageIndex();
+      markParentNeedsLayout();
+    }
+  }
+
+  void _syncPageIndex() {
+    if (parentData is TurnableParentData) {
+      (parentData as TurnableParentData).pageIndex = _index;
+    }
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _syncPageIndex();
+  }
 
   @override
   void setupParentData(RenderObject child) {
-    if (parentData is! TurnableParentData) parentData = TurnableParentData();
-    (parentData as TurnableParentData).pageIndex = index;
+    // Side-effect: also keep our own parentData.pageIndex in sync.
+    _syncPageIndex();
   }
 }
