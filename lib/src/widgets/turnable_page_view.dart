@@ -122,11 +122,19 @@ class _TurnablePageViewState extends State<TurnablePageView>
       indices.add(current);
       if (current < total - 1) indices.add(current + 1);
     } else {
-      // Double mode: current spread + 1 prev spread + 1 next spread.
-      // A generous window of current-3 .. current+4 covers any spread
-      // arrangement (including covers).
-      final start = (current - 3).clamp(0, total - 1);
-      final end = (current + 4).clamp(0, total - 1);
+      // Double mode: Reduced window to preload 4 pages (current spread + 1 neighbors).
+      int start = (current - 2).clamp(0, total - 1);
+      int end = (current + 3).clamp(0, total - 1);
+
+      // Ensure that in double mode we always have an even number of pages
+      // to avoid alignment issues in the spread.
+      if (start % 2 != 0) {
+        start = (start - 1).clamp(0, total - 1);
+      }
+      if ((end - start + 1) % 2 != 0) {
+        end = (end + 1).clamp(0, total - 1);
+      }
+
       for (int i = start; i <= end; i++) {
         indices.add(i);
       }
